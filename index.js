@@ -313,7 +313,7 @@ const test = ['3','+','1','^','2','=','4'];
 
 // add_symbols(1,0,2,4);
 end:
-for (let i = 1; i < 2; i++) {
+for (let i = 1; i < 10; i++) {
   for (let j = 0; j < 10; j++) {
     for (let k = 0; k < 10; k++) {
       for (let l = 0; l < 10; l++) {

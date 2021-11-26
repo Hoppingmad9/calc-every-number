@@ -1,3 +1,5 @@
+import {writeFile} from 'fs/promises';
+
 function calc_array(arr) {
   for (let index = 0; index < arr.length; index++) {
     if (Array.isArray(arr[index])) {
@@ -83,6 +85,7 @@ function calc_orders(arr) {
   arr = split_on_equal(arr);
   // console.log(arr);
   let result;
+  let outputArr;
   if (arr[0].length == 5) {
     // 2 orders on left
     const first = JSON.parse(JSON.stringify(arr[0]));
@@ -140,7 +143,7 @@ function calc_orders(arr) {
   return [false, [startArr]];
 }
 
-function format_output(arr) {
+function format_output(arr, csv=false) {
   if (arr[0] === false) {
     return `No result for ${arr[1]}.`;
   } else {
@@ -162,17 +165,13 @@ function format_output(arr) {
       }    
     }
     // return `${left.join('')} = ${leftRes} == ${rightRes} = ${right.join('')}`;
-    return `${left.join('')} = ${right.join('')} : ${leftRes} == ${rightRes}`;
+    if (csv) {
+      return [`${left.join('')} = ${right.join('')}`, leftRes];
+    } else {
+      return `${left.join('')} = ${right.join('')} : ${leftRes} == ${rightRes}`;
+    }
   }
 }
-
-// const test = ['1','^','2','+','3','=','4'];
-const test = ['3','+','1','^','2','=','4'];
-// const test = ['4','=','1','^','2','+','3'];
-// const test = ['4','=','3','+','1','^','2'];
-// const test2 = [['1','^','2','+','3'], ['4']];
-// console.log(test2);
-format_output(calc_orders(test));
 
 function split_on_equal(arr) {
   const pos = arr.indexOf('=');
@@ -181,16 +180,22 @@ function split_on_equal(arr) {
   return [arr.slice(0, pos), arr.slice(pos+1)];
 }
 
-const symbols = ['=', '+', '-', '*', '/', '^', '%'];
-const modifiers = ['', 'sqrt', '!'];
 
-function calc_modifier(mod, num) {
+function calc_modifier(mod, num, str=false) {
   if (mod == '') {
     return num;
   } else if (mod === 'sqrt') {
-    return Math.sqrt(num);
+    if (str) {
+      return `(√${num})`;
+    } else {
+      return Math.sqrt(num);
+    }
   } else if (mod === '!') {
-    return factorialize(num);
+    if (str) {
+      return `(${num}!)`
+    } else {
+      return factorialize(num);
+    }
   } else {
     return num;
   }
@@ -204,6 +209,24 @@ function factorialize(num) {
   else {
       return (num * factorialize(num - 1));
   }
+}
+
+function arrayReplace(str, findArray, replaceArray) {
+  const pieces = [];
+  let tempStr = str;
+  for (let i = 0; i < findArray.length; i++) {
+    const number = findArray[i];
+    let endPos = tempStr.indexOf(number);
+    endPos += number.length;
+    pieces.push(tempStr.slice(0, endPos));
+    tempStr = tempStr.slice(endPos);
+  }
+  for (let i = 0; i < findArray.length; i++) {
+    const numberToFind = findArray[i];
+    const numberToUse = replaceArray[i];
+    pieces[i] = pieces[i].replace(numberToFind, numberToUse);
+  }
+  return pieces.join('');
 }
 
 function add_symbols(i,j,k,l, mods=false) {
@@ -221,6 +244,7 @@ function add_symbols(i,j,k,l, mods=false) {
           // const calcArr = ['1','=','0','-','0','-','1'];
           const result = calc_orders(calcArr);
           if (result[0] != false) {
+            answered.push([i, j, k, l].concat(format_output(result, true)).join());
             // console.log(format_output(result));
             return 0;
           }
@@ -241,7 +265,17 @@ function add_symbols(i,j,k,l, mods=false) {
                   // console.log(calcArr);
                   const result = calc_orders(calcArr);
                   if (result[0] != false) {
-                    // console.log(format_output(result));
+                    const iStr = calc_modifier(m1, i, true);
+                    const jStr = calc_modifier(m2, j, true);
+                    const kStr = calc_modifier(m3, k, true);
+                    const lStr = calc_modifier(m4, l, true);
+                    const strRes = format_output(result, true)
+                    const regex = /\d+/g;
+                    const matches = strRes[0].match(regex);
+                    const replaced = arrayReplace(strRes[0], matches, [iStr, jStr, kStr, lStr]);
+
+                    answered.push([i, j, k, l].concat([replaced]).concat(strRes[1]).join());
+                    // answered.push([i, j, k, l].concat(format_output(result, true)).join());
                     return 0;
                   }
                 }
@@ -257,15 +291,33 @@ function add_symbols(i,j,k,l, mods=false) {
     return add_symbols(i,j,k,l, true);
   } else {
     console.log(`No result for ${i}, ${j}, ${k}, ${l}.`);
+    notAnswered.push([i, j, k, l].join());
     return 1;
   }
 }
+
+const symbols = ['=', '+', '-', '*', '/', '^', '%'];
+const modifiers = ['', 'sqrt', '!'];
 let failed = 0;
+const answered = [];
+const notAnswered = [];
+
+// const test = ['1','^','2','+','3','=','4'];
+const test = ['3','+','1','^','2','=','4'];
+// const test = ['4','=','1','^','2','+','3'];
+// const test = ['4','=','3','+','1','^','2'];
+// const test2 = [['1','^','2','+','3'], ['4']];
+// console.log(test2);
+// format_output(calc_orders(test));
+// console.log(format_output(calc_orders(test), true));
+
+// add_symbols(1,0,2,4);
 end:
-for (let i = 1; i < 10; i++) {
+for (let i = 1; i < 2; i++) {
   for (let j = 0; j < 10; j++) {
     for (let k = 0; k < 10; k++) {
       for (let l = 0; l < 10; l++) {
+        // break end;
         failed += add_symbols(i,j,k,l);
         // if (failed > 0) {
         //   break end;
@@ -276,3 +328,8 @@ for (let i = 1; i < 10; i++) {
 }
 
 console.log(`Failed: ${failed}`);
+console.log(answered);
+console.log(notAnswered);
+
+writeFile('answered.csv', answered.join('\n'));
+writeFile('notAnswered.csv', notAnswered.join('\n'));
